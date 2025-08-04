@@ -33,7 +33,25 @@ RGA2 не поддерживает адресацию памяти **свыше 
 - Если ваш orange pi 5 ultra (или любой другой одноплатный ПК) имеет более 4 ГБ оперативной памяти, то необходимо отключить RGA2, так как если планировщик перенаправит задание обработки изображения с RGA3 на RGA2, то система зависнет.
 
 ### **Инструкция по отключению RGA2**
-##### 1. Проверьте пути расположения файлов `dtb`
+##### 1. Проверьте текущие настройки RGA
+```
+dmesg | grep rga
+```
+Пример вывода
+```
+[   28.088586] rockchip-pm-domain fd8d8000.power-management:power-controller: Looking up rga30-supply from device tree
+[   28.088613] rockchip-pm-domain fd8d8000.power-management:power-controller: Looking up rga30-supply property in node /power-management@fd8d8000/power-controller failed
+[   28.088986] rockchip-pm-domain fd8d8000.power-management:power-controller: Looking up rga31-supply from device tree
+[   28.089008] rockchip-pm-domain fd8d8000.power-management:power-controller: Looking up rga31-supply property in node /power-management@fd8d8000/power-controller failed
+[   28.769168] rga3 fdb60000.rga: Adding to iommu group 2
+[   28.769454] rga3 fdb60000.rga: probe successfully, irq = 41, hw_version:3.0.76831
+[   28.769522] rga3 fdb70000.rga: Adding to iommu group 3
+[   28.769704] rga3 fdb70000.rga: probe successfully, irq = 42, hw_version:3.0.76831
+[   28.770092] rga2 fdb80000.rga: probe successfully, irq = 104, hw_version:3.2.63318
+[   28.770166] rga_iommu: IOMMU binding successfully, default mapping core[0x1]
+[   28.770239] rga: Module initialized. v1.3.4
+```
+##### 2. Проверьте пути расположения файлов `dtb`
 ```
 cat /boot/extlinux/extlinux.conf
 ```
@@ -68,25 +86,25 @@ label l0r
 	append root=UUID=5a0f61f0-da0c-42d9-b3c5-ae352b724b38 rootwait rw console=ttyS2,1500000 console=tty1 cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory splash plymouth.ignore-serial-consoles single
 ```
 
-##### 2. Перейдите в папку с драйверами
+##### 3. Перейдите в папку с драйверами
 ```
 cd /lib/firmware/6.1.0-1025-rockchip/device-tree
 ls
 ```
-##### 3. Найдите файл с именем `rk3588-orangepi-5-ultra.dtb` (возможно другое имя файла, если плата отличается)
-##### 4. Декомпилируйте DTB → DTS
+##### 4. Найдите файл с именем `rk3588-orangepi-5-ultra.dtb` (возможно другое имя файла, если плата отличается)
+##### 5. Декомпилируйте DTB → DTS
 ```
 sudo dtc -I dtb -O dts -o orangepi-5-ultra.dts rockchip/rk3588s-orangepi-5-ultra.dtb
 ```
-##### 5. Найдите номера строк, содержащих настройки RGA, в файле orangepi-5-ultra.dts
+##### 6. Найдите номера строк, содержащих настройки RGA, в файле orangepi-5-ultra.dts
 ```
 grep -n "rga" orangepi-5-ultra.dts
 ```
-##### 6. Открыть DTS для редактирования.
+##### 7. Открыть DTS для редактирования.
 ```
 sudo nano -l orangepi-5-ultra.dts
 ```
-##### 7. Перейти к нужной строке с сочетание клавиш `Ctrl`+`/` и введите нужную строку, например `3888`.
+##### 8. Перейти к нужной строке с сочетание клавиш `Ctrl`+`/` и введите нужную строку, например `3888`.
 ###### Пример вывода.
 ```
 3888         rga@fdb80000 {
@@ -104,20 +122,37 @@ sudo nano -l orangepi-5-ultra.dts
 ```
 Замените `status = "okay";` на `status = "disabled";`
 Сохраните изменения командой `Ctrl`+`o` и выйдите из редактора `Ctrl`+`x`
-##### 8. Перекомпилируйте DTS → DTB
+##### 9. Перекомпилируйте DTS → DTB
 ```
 sudo dtc -I dts -O dtb -o rk3588-orangepi-5-ultra.dtb orangepi-5-ultra.dts
 ```
-##### 9. Сделайте резервную копию оригинального DTB!
+##### 10. Сделайте резервную копию оригинального DTB!
 ```
 sudo cp rockchip/rk3588-orangepi-5-ultra.dtb rockchip/rk3588-orangepi-5-ultra.dtb.bak
 ```
-##### 10. Замените текущий DTB:
+##### 11. Замените текущий DTB:
 ```
 sudo mv rk3588-orangepi-5-ultra.dtb rockchip/rk3588-orangepi-5-ultra.dtb
 ```
-##### 11. Обновить initramfs и перезагрузить
+##### 12. Обновить initramfs и перезагрузить
 ```
 sudo update-initramfs -u
 sudo reboot
+```
+##### 13. После перезагрузки проверьте доступные блоки RGA
+```
+dmesg | grep rga
+```
+Пример вывода
+```
+[    5.946000] rockchip-pm-domain fd8d8000.power-management:power-controller: Looking up rga30-supply from device tree
+[    5.946026] rockchip-pm-domain fd8d8000.power-management:power-controller: Looking up rga30-supply property in node /power-management@fd8d8000/power-controller failed
+[    5.946420] rockchip-pm-domain fd8d8000.power-management:power-controller: Looking up rga31-supply from device tree
+[    5.946441] rockchip-pm-domain fd8d8000.power-management:power-controller: Looking up rga31-supply property in node /power-management@fd8d8000/power-controller failed
+[   23.078653] rga3 fdb60000.rga: Adding to iommu group 2
+[   23.078946] rga3 fdb60000.rga: probe successfully, irq = 51, hw_version:3.0.76831
+[   23.079009] rga3 fdb70000.rga: Adding to iommu group 3
+[   23.079183] rga3 fdb70000.rga: probe successfully, irq = 52, hw_version:3.0.76831
+[   23.079458] rga_iommu: IOMMU binding successfully, default mapping core[0x1]
+[   23.079584] rga: Module initialized. v1.3.4
 ```
